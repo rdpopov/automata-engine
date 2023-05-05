@@ -41,7 +41,15 @@ function M.automata_create_palete_buttons(geometry,colors,automata_states,render
     })
     y = y + dy + space
   end
+  geometry.y = y
   return ret
+end
+
+-- move the geometry, with the vector and return a box for it
+function M.box_next_g(g,offset_vector)
+    g.y = g.y + offset_vector.y*(offset_vector.y + g.space)
+    g.x= g.x + offset_vector.y*(offset_vector.x + g.space)
+    return M.create_box(g.x,g.y,g,g.x + g.dx,g.y + g.dy)
 end
 
 
