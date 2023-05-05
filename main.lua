@@ -3,8 +3,8 @@ space_utils = require("elements")
 i = 0
 draw_start = 0
 
-
-local board_dimensions = {x = 600,y = 500, cell_x = 60 , cell_y = 60}
+local square_side = math.min(love.graphics.getHeight( ),love.graphics.getWidth( )) - 20
+local board_dimensions = {x = square_side,y = square_side, cell_x = 60 , cell_y = 60}
 
 local colors = {
  [0] = {0,0,0},
@@ -24,7 +24,8 @@ local global_state = {
     current_color = 0,
     renderables = {},
     actionables = {key = {},mouse = {}},
-    generation = 0
+    generation = 0,
+    updates_per_second = 2,
 }
 function register_mouse_action(item)
   if item ~= nil and item.mouse_action ~= nil then
@@ -38,6 +39,7 @@ function register_renderable(item)
   end
 end
 
+-- board
 local board_size = {x = board_dimensions.cell_x,y = board_dimensions.cell_y}
 local board,spare = automata.generate_boards(board_size.x,board_size.y)
 local automata_container = {
@@ -71,7 +73,7 @@ local automata_container = {
        end
     end
   end,
-  mouse_action = function (self,x,y)
+  mouse_action = function (self,x,y,btn)
     if space_utils.in_box(self.box,{x,y}) and global_state.pause == true then
       local cx = math.floor(((x - self.box.x1)/(self.box.dx/self.board_size.x))) + 1
       local cy = math.floor(((y - self.box.y1)/(self.box.dy/self.board_size.y))) + 1
@@ -82,13 +84,9 @@ local automata_container = {
 
 }
 automata.glider(automata_container.main_board,1)
-
-local generation_label = {
-
-}
 register_renderable(automata_container)
 register_mouse_action(automata_container)
-
+ -- Palete buttons
 local button_geometry = {
   x = board_dimensions.x + 20,
   y = 10,
@@ -96,7 +94,7 @@ local button_geometry = {
   dy = 40,
   space = 10,
 }
-
+-- Color palete buttons
 local buttons = space_utils.automata_create_palete_buttons(button_geometry,
 automata_container.colors_table,
 automata_container.tr_table.states,
@@ -110,7 +108,7 @@ function (self)
   love.graphics.setColor(self.color)
   love.graphics.rectangle("fill",self.box.x1,self.box.y1 ,self.box.dx,self.box.dy)
 end,
-function (self,x,y)
+function (self,x,y,btn)
   if space_utils.in_box(self.box,{x,y}) then
     global_state.current_color = self.label
   end
@@ -122,6 +120,7 @@ for _,i in pairs(buttons) do
 end
 
 
+
 function love.draw()
   for _,ren in pairs(global_state.renderables) do
     ren.render(ren)
@@ -130,7 +129,7 @@ end
 
 function love.update(dt)
     if dt < 1/60 then
-        love.timer.sleep((1/60 - dt) * 15)
+        love.timer.sleep((1/60 - dt) * 60/global_state.updates_per_second)
     end
     if global_state.pause == false or global_state.steps > 0 then
         global_state.generation = global_state.generation + 1
@@ -154,6 +153,6 @@ end
 
 function love.mousepressed( x, y, button, istouch, presses )
   for _,mac in pairs(global_state.actionables.mouse) do
-    mac.mouse_action(mac,x,y)
+    mac.mouse_action(mac,x,y,bitton)
   end
 end
