@@ -86,44 +86,97 @@ local function advance_board(brd,spare,trans_table)
     return spare,brd
 end
 M.advance_board = advance_board
+local function wildcard_table_select (tbl,key)
+        local res = nil
+        for k,v in pairs(tbl) do
+            if string.match(key,k) then
+                return v
+            end
+        end
+        return tbl.default
+end
 
 local function tr(tbl)
-    return setmetatable(tbl,{__index = function ()
-        return tbl.default
-    end})
+    return setmetatable(tbl,{__index = wildcard_table_select})
 end
 M.tr = tr
 
 local DEAD = 0
 local ALIVE = 1
 
-function glider(brd,val)
-    brd[1][2] = val
 
-    brd[2][3] = val
+local EMPTY = 0
+local CONNECTOR = 1
+local ELECTRON_TAIL = 2
+local ELECTRON_HEAD = 3
 
-    brd[3][1] = val
-    brd[3][2] = val
-    brd[3][3] = val
+
+function glider(brd)
+    brd[1][2] = ALIVE
+    brd[2][3] = ALIVE
+    brd[3][1] = ALIVE
+    brd[3][2] = ALIVE
+    brd[3][3] = ALIVE
 end
-M.glider = glider
+M.GoL_glider = glider
 
 local function GoL_transition_table()
     return {
         states = {DEAD,ALIVE},
         [DEAD] = tr({
-            ["53"]  =  ALIVE,
+            [".3"]  =  ALIVE,
             ["default"] = DEAD
         }),
         [ALIVE] = tr({
-            ["62"]  =  ALIVE,
-            ["53"]  =  ALIVE,
+            [".2"]  =  ALIVE,
+            [".3"]  =  ALIVE,
             ["default"] = DEAD
         })
     }
 end
-
 M.GoL_transition_table = GoL_transition_table
+
+local function Wireworld_donut(brd)
+    brd[2][1] = ELECTRON_HEAD
+    brd[3][1] = CONNECTOR
+    brd[4][1] = CONNECTOR
+    brd[5][1] = CONNECTOR
+    brd[6][1] = CONNECTOR
+
+    brd[1][2] = ELECTRON_TAIL
+    brd[7][2] = ELECTRON_TAIL
+
+    brd[2][3] = CONNECTOR
+    brd[3][3] = CONNECTOR
+    brd[4][3] = CONNECTOR
+    brd[5][3] = CONNECTOR
+    brd[6][3] = ELECTRON_HEAD
+end
+
+M.Wireworld_donut = Wireworld_donut
+local function Wireworld_transition_table()
+    return {
+        states = {EMPTY,CONNECTOR,ELECTRON_TAIL,ELECTRON_HEAD},
+        [EMPTY] = tr({
+            ["default"] = EMPTY
+        }),
+        [CONNECTOR] = tr({
+            -- these can be replaced with ...[12] but that would take away alignment if there were others
+            ["...1"]  =  ELECTRON_HEAD,
+            ["...2"]  =  ELECTRON_HEAD,
+            ["default"] = CONNECTOR
+        }),
+        [ELECTRON_HEAD] = tr({
+            ["default"] = ELECTRON_TAIL
+        }),
+        [ELECTRON_TAIL] = tr({
+            ["default"] = CONNECTOR
+        })
+    }
+end
+
+M.Wireworld_transition_table = Wireworld_transition_table
+
 
 
 local function test()
@@ -140,5 +193,12 @@ local function test()
     end
 end
 
+local function test_wildcard_transition()
+    local t = tr({["[12]."] = 10,["2."] = 21, ["11"] = 11, ["20"] = 20, ["default"]  = 5})
+    print(t["10"])
+    print(t["20"])
+    print(t["22"])
+end
 -- test()
+test_wildcard_transition()
 return M

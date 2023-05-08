@@ -25,7 +25,7 @@ local global_state = {
     renderables = {},
     actionables = {key = {},mouse = {}},
     generation = 0,
-    updates_per_second = 2,
+    updates_per_second = 1,
 }
 function register_mouse_action(item)
   if item ~= nil and item.mouse_action ~= nil then
@@ -48,6 +48,7 @@ local automata_container = {
   colors_table = colors,
   main_board = board,
   spare_board = spare,
+  -- tr_table = automata.Wireworld_transition_table(),
   tr_table = automata.GoL_transition_table(),
   render = function (self)
     local x = self.box.x1
@@ -78,12 +79,13 @@ local automata_container = {
       local cx = math.floor(((x - self.box.x1)/(self.box.dx/self.board_size.x))) + 1
       local cy = math.floor(((y - self.box.y1)/(self.box.dy/self.board_size.y))) + 1
       self.main_board[cx][cy] = global_state.current_color
-      print("clicked ",global_state.current_color,board[cx][cy])
+      -- print("clicked ",global_state.current_color,board[cx][cy])
     end
   end
 
 }
-automata.glider(automata_container.main_board,1)
+automata.GoL_glider(automata_container.main_board)
+-- automata.Wireworld_donut(automata_container.main_board)
 register_renderable(automata_container)
 register_mouse_action(automata_container)
  -- Palete buttons
@@ -114,6 +116,72 @@ function (self,x,y,btn)
   end
 end)
 
+local generation_label = {
+  box = space_utils.box_next_g(button_geometry,{x = 0,y = 0}),
+  generation = 0,
+  render = function (self)
+    love.graphics.setColor({1,1,1})
+    love.graphics.print("Gen:", self.box.x1,self.box.y1)
+    love.graphics.print(self.generation, self.box.x1,self.box.y1 + 12)
+    -- TODO : Make size of box adjust dynamically beased on text
+    love.graphics.setColor({.3,.3,.3})
+    love.graphics.rectangle("line",self.box.x1-1,self.box.y1-1 ,self.box.dx+2,self.box.dy+2)
+  end,
+  mouse_action = function (self,x,y,btn)
+    if space_utils.in_box(self.box,{x,y}) then
+      self.generation = 0
+    end
+  end,
+}
+
+table.insert(buttons,generation_label)
+
+local speed_controler = {
+  box = space_utils.box_next_g(button_geometry,{x = 0,y = 1}),
+  per_second = 3,
+  render = function (self)
+    love.graphics.setColor({1,1,1})
+    love.graphics.print("Upd/s:", self.box.x1,self.box.y1)
+    love.graphics.print(self.per_second, self.box.x1,self.box.y1 + 12)
+    -- TODO : Make size of box adjust dynamically beased on text
+    love.graphics.setColor({.3,.3,.3})
+    love.graphics.rectangle("line",self.box.x1-1,self.box.y1-1 ,self.box.dx+2,self.box.dy+2)
+  end,
+  mouse_action = function (self,x,y,btn)
+    if space_utils.in_box(self.box,{x,y}) then
+      if btn == 1 then
+        self.per_second = self.per_second +1
+      else
+        self.per_second = self.per_second -1
+        if self.per_second == 0 then
+            self.per_second = 1
+        end
+      end
+    end
+  end,
+}
+table.insert(buttons,speed_controler)
+
+local reset_button = {
+  box = space_utils.box_next_g(button_geometry,{x = 0,y = 1}),
+  render = function (self)
+    love.graphics.setColor({1,1,1})
+    love.graphics.print("RESET", self.box.x1,self.box.y1 + 12)
+    love.graphics.setColor({.3,.3,.3})
+    love.graphics.rectangle("line",self.box.x1-1,self.box.y1-1 ,self.box.dx+2,self.box.dy+2)
+  end,
+  mouse_action = function (self,x,y,btn)
+    if space_utils.in_box(self.box,{x,y}) then
+        generation_label.generation = 0
+        speed_controler.per_second = 3
+        automata_container.main_board = automata.generate_board(board_size.x,board_size.y)
+        global_state.pause = true
+    end
+  end,
+}
+
+table.insert(buttons,reset_button)
+
 for _,i in pairs(buttons) do
   register_renderable(i)
   register_mouse_action(i)
@@ -127,15 +195,21 @@ function love.draw()
   end
 end
 
+local since_last_update = 0
 function love.update(dt)
     if dt < 1/60 then
-        love.timer.sleep((1/60 - dt) * 60/global_state.updates_per_second)
+        love.timer.sleep((1/60 - dt))
     end
-    if global_state.pause == false or global_state.steps > 0 then
-        global_state.generation = global_state.generation + 1
-        automata_container.main_board, automata_container.spare_board = automata.advance_board(automata_container.main_board, automata_container.spare_board,automata_container.tr_table)
-        global_state.steps = 0
+    since_last_update = since_last_update + 1/60
+    local framerate = 1/speed_controler.per_second
+    love.timer.sleep((framerate))
+    if global_state.pause == false or global_state.steps > 0 and since_last_update >= 1/speed_controler.per_second then
+      generation_label.generation = generation_label.generation + 1
+      automata_container.main_board, automata_container.spare_board = automata.advance_board(automata_container.main_board, automata_container.spare_board,automata_container.tr_table)
+      global_state.steps = 0
+      since_last_update = since_last_update - 1/speed_controler.per_second
     end
+  -- end
     love.graphics.clear()
 end
 
@@ -153,6 +227,6 @@ end
 
 function love.mousepressed( x, y, button, istouch, presses )
   for _,mac in pairs(global_state.actionables.mouse) do
-    mac.mouse_action(mac,x,y,bitton)
+    mac.mouse_action(mac,x,y,button)
   end
 end
