@@ -42,7 +42,7 @@ This is also an experiment with the love2d game engine.
 - [x] Buttons to Show Generations
 
 ### Game Of Life
-<img src="https://github.com/rdpopv/automata-engine/blob/master/.img/GoL-glider.png"  title="Game of life">
+<img src=".img/GoL-glider.png"  title="Game of life">
 
 ### Wireworld
-<img src="https://github.com/rdpopv/automata-engine/blob/master/ .img/Wireworld-donut.png"  title="Wireworld">
+<img src=".img/Wireworld-donut.png"  title="Wireworld">
